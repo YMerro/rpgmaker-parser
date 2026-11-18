@@ -1,5 +1,5 @@
-import type { Command, Engine, EventSource, GameMapData, SourceRef, Usage } from '../types.ts';
-import { mapToSources } from './engine.ts';
+import type { Command, Engine, EventSource, GameMapData, SourceRef, Usage } from '../types';
+import { mapToSources } from './normalize';
 
 /**
  * Scans page conditions + control commands. No script analysis, and called

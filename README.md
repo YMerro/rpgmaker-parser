@@ -5,12 +5,19 @@ Extracts the logic structure of an RPG Maker game into a portable `game-map.json
 - maps and the transfers between them;
 - common events and the events that call them.
 
-Supports **MV, MZ, VX Ace, VX and XP**, whether the data is loose, in an encrypted RGSS archive,
-or inside an NW.js package (`package.nw`, or a zip appended to `Game.exe`). No runtime dependencies.
+Supports **MV, MZ, VX Ace, VX and XP**.
+
+The repository has two parts:
+- **`src/addons/gameMap/`** is the addon. It is pure TypeScript with no I/O, made to be dropped into the toolkit,
+  which feeds it game data through a `GameDataSource`. See its [README](src/addons/gameMap/README.md)
+  and [INTEGRATION.md](src/addons/gameMap/INTEGRATION.md).
+- **`src/standalone/`** is a Node data source plus a CLI, to run the parser on a game folder without the toolkit.
+  It reads loose data, encrypted RGSS archives (`rgss3a`/`rgss2a`/`rgssad`) and NW.js packages
+  (`package.nw`, or a zip appended to `Game.exe`).
 
 ## Usage
 
-Requires Node.js 22.18 or later, which runs the TypeScript sources directly.
+Requires Node.js 20.11 or later.
 
 ```bash
 npm install
@@ -18,8 +25,13 @@ npm run gamemap -- <gameFolder> [out.json]
 ```
 
 ```ts
-import { buildGameMap } from './src/addons/gameMap/index.ts';
-const graph = buildGameMap('/path/to/game');
+// Node, straight from a game folder
+import { buildGameMap } from './src/standalone';
+const graph = await buildGameMap('/path/to/game');
+
+// Any host (toolkit): provide the data yourself
+import { buildGameMapFrom } from './src/addons/gameMap';
+const graph = await buildGameMapFrom(mySource);
 ```
 
 ## Output (excerpt)
@@ -45,7 +57,7 @@ const graph = buildGameMap('/path/to/game');
 }
 ```
 
-See [`src/addons/gameMap/README.md`](src/addons/gameMap/README.md) for the modules, the detected commands and the current limits.
+Not supported: Enigma Virtual Box executables (extract them first, e.g. with `evbunpack`), ZIP64 packages, and RPG Maker 2000/2003.
 
 ## Development
 

@@ -1,11 +1,11 @@
 /**
  * Minimal Ruby Marshal 4.8 reader (enough for RGSS1/RGSS3 data files).
- * Ruby objects become plain objects with `__class`; ivar names lose the `@`
- * and are converted to camelCase so they line up with MV/MZ JSON keys.
+ * Ruby objects become plain objects with `__class`; ivar names keep Ruby's
+ * snake_case and only lose the `@` (the addon's normalizer accepts either).
  * `_dump` payloads (Table, Color, Tone) are not decoded.
  */
 const utf8 = new TextDecoder('utf-8');
-const camel = (s: string) => s.replace(/^@/, '').replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+const ivar = (s: string) => s.replace(/^@/, '');
 
 export type RubyObject = { __class: string; [k: string]: unknown };
 
@@ -79,7 +79,7 @@ class Reader {
       case 'o': case 'S': {
         const o: RubyObject = { __class: this.symbol() };
         this.reg(o);
-        for (let n = this.int(); n > 0; n--) { const k = camel(this.symbol()); o[k] = this.read(); }
+        for (let n = this.int(); n > 0; n--) { const k = ivar(this.symbol()); o[k] = this.read(); }
         return o;
       }
       case 'f': {

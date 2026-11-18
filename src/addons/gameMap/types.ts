@@ -1,3 +1,4 @@
+/** All types here are plain data: the parser's output is portable JSON. */
 export type Engine = 'mv' | 'mz' | 'vxace' | 'vx' | 'xp';
 
 export interface Command {
@@ -34,16 +35,6 @@ export type Usage = SourceRef & {
 export interface MapInfo { id: number; name: string; parentId: number; order: number }
 export interface CommonEventInfo { id: number; name: string; trigger: number; switchId: number; list: Command[] }
 export interface TroopInfo { id: number; name: string; pages: { condition: PageCondition; list: Command[] }[] }
-
-export interface GameDatabase {
-  engine: Engine;
-  title: string;
-  switches: string[];   // index = id, [0] unused
-  variables: string[];
-  mapInfos: MapInfo[];
-  commonEvents: CommonEventInfo[];
-  troops: TroopInfo[];
-}
 
 export interface MapEvent { id: number; name: string; x: number; y: number; pages: { condition: PageCondition; list: Command[] }[] }
 export interface GameMapData { id: number; displayName: string; events: MapEvent[] }

@@ -1,31 +1,52 @@
-# gameMap: RPG Maker logic parser
+# gameMap addon
 
-Extracts switches, variables, maps and how they are used into a portable `game-map.json`.
-Supports MV, MZ, VX Ace, VX and XP. Data can be read from:
-- loose files: the standard export, where `Game.exe` is only the NW.js/RGSS runtime;
-- an MV/MZ NW.js package: a `package.nw` (zip or folder), or a zip appended to any `.exe` at the game root;
-- an encrypted RGSS archive (`Game.rgss3a`, `Game.rgss2a`, `Game.rgssad`).
-No dependencies. Includes its own Ruby Marshal reader.
+Builds a portable JSON graph of an RPG Maker game's logic: switches, variables, maps,
+common events and where each is used.
+Supports MV, MZ, VX Ace, VX and XP.
 
-    node src/addons/gameMap/cli.ts <gameFolder> [out.json]
+This folder is a drop-in for the toolkit's `src/addons/gameMap/`:
+- pure TypeScript, with no Node APIs and no file I/O, so it runs in the main process, the renderer or a worker;
+- the host supplies raw game data through `GameDataSource` (`source.ts`);
+- the output is plain JSON, safe for IPC and `structuredClone`.
 
-| Module | Role |
+```ts
+import { buildGameMapFrom } from './addons/gameMap';
+const graph = await buildGameMapFrom(source, { concurrency: 8, onProgress: (done, total) => {} });
+```
+
+| File | Role |
 |---|---|
-| `parser/engine.ts` | `detectEngine`, `loadDatabase`, `loadMap`, `loadEvents`: normalizes JSON and Marshal data into one shape |
-| `parser/files.ts` | case-insensitive folder access, RGSSAD v1/v3 archives, NW.js zip packages |
-| `parser/marshal.ts` | Ruby Marshal 4.8 → plain objects (ivars camelCased to match MV keys) |
-| `parser/scanner.ts` | `findSwitchUsage`, `findVariableUsage`, `findMapLinks` |
-| `builder.ts` | `buildGameMap` / `writeGameMap` |
+| `index.ts` | public API |
+| `source.ts` | `GameDataSource` interface (what the host must provide), `normalizeEngine` |
+| `types.ts` | output and intermediate types (plain data only) |
+| `core/normalize.ts` | raw engine data → neutral structures (accepts camelCase, snake_case and `@ivar` keys; Ruby hashes as object, array or `Map`) |
+| `core/scanner.ts` | `scanSources`, `findSwitchUsage`, `findVariableUsage`, `findMapLinks` |
+| `core/builder.ts` | `buildGameMapFrom`: loads through the source, scans, assembles the graph |
 
-**Detected usages**: page conditions (map events, troops, common-event triggers) and the commands
-121 Control Switches, 122 Control Variables, 111 Conditional Branch, 103 Input Number, 104 Select Item,
-125–128 operands, 201/202/203 variable-designated positions, 285 Get Location Info.
-117 Common Event calls are recorded (`commonEvents[].calledFrom`) but not followed.
+## What is detected
+
+**Page conditions**: switches and variables gating map event pages, troop pages,
+and common-event triggers.
+
+**Commands**:
+- 121 Control Switches
+- 122 Control Variables (target written; operand read when it is a variable)
+- 111 Conditional Branch
+- 103 Input Number
+- 104 Select Item (VX Ace+)
+- 125–128 gold/item changes whose amount comes from a variable
+- 201/202/203 positions designated by variables
+- 285 Get Location Info (VX Ace+)
+
+Command 203 means Set Vehicle Location from VX onward, but Scroll Map in XP, so it is ignored for XP.
+Calls to common events (117) are recorded in `commonEvents[].calledFrom` but not followed.
 Script calls and plugin commands are not analyzed.
 
-Commands that don't exist in an engine are skipped for it: 104/285 need VX Ace+, and 203 is Scroll Map in XP.
+## Failure handling
 
-**Not supported**:
-- Enigma Virtual Box executables: detected and rejected with a hint (extract them first, e.g. with `evbunpack`);
-- ZIP64 packages larger than 4 GB;
-- RPG Maker 2000/2003, which use a different binary format (LCF).
+- Only the System data is required. If it is missing, the build throws.
+- If MapInfos, CommonEvents, Troops or a single map fails, it is skipped and recorded in `warnings`.
+
+Reading game files from disk (RGSS archives, NW.js packages, Ruby Marshal) is not done here.
+In this repository, `src/standalone/` does that for the CLI and tests.
+In the toolkit, `src/core` does it. See `INTEGRATION.md`.
